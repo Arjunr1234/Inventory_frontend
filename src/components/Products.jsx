@@ -82,11 +82,14 @@ function Products() {
       if (isEditMode) {
         
         const response = await updateProductService(currentProductId, data);
+        console.log("This is response; ", data);
+        
         if(response.success){
           const updatedProducts = allProduct.map((p) =>
             p._id === currentProductId ? { ...p, ...data } : p
           );
           setAllProducts(updatedProducts);
+          setfilteredProducts(updatedProducts)
           toast.success("Product updated successfully!");
         }
         

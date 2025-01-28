@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { FaTrash } from "react-icons/fa";
-import {  billingProductService, getAllCustomersService, getAllProductService } from "../services/userService";
+import { billingProductService, getAllCustomersService, getAllProductService } from "../services/userService";
 import { toast } from "sonner";
-
-
 
 function Sales() {
   const [customers, setCustomers] = useState([]);
@@ -16,32 +14,28 @@ function Sales() {
   const [paymentType, setPaymentType] = useState("Cash");
   const [totalBill, setTotalBill] = useState(0);
 
-  
   useEffect(() => {
-      fetchAllProduct()
-      fetchAllCustomers()
-  },[])
+    fetchAllProduct();
+    fetchAllCustomers();
+  }, []);
 
-
-  const fetchAllCustomers = async() => {
+  const fetchAllCustomers = async () => {
     try {
       const response = await getAllCustomersService();
-      if(response.success){
-       
-       setCustomers(response.customers)
-      }else{
-        toast.error("Failed to Fetch customers")
+      if (response.success) {
+        setCustomers(response.customers);
+      } else {
+        toast.error("Failed to Fetch customers");
       }
-     
     } catch (error) {
-       console.log("Error in fetchAllCustomers: ", error)
+      console.log("Error in fetchAllCustomers: ", error);
     }
- }
+  };
+
   const fetchAllProduct = async () => {
     try {
       const response = await getAllProductService();
       if (response.success) {
-        
         setProducts(response.products);
       } else {
         toast.error(response.message || 'Failed to fetch products.');
@@ -58,6 +52,11 @@ function Sales() {
 
   const handleCustomerSelect = (customer) => {
     setSelectedCustomer(customer);
+    setSearchQuery(customer.name);
+  };
+
+  const handleCustomerClear = () => {
+    setSelectedCustomer(null);
     setSearchQuery("");
   };
 
@@ -73,15 +72,40 @@ function Sales() {
       );
     }
 
-    const newProduct = {
-      _id: product._id,
-      product: product.product,
-      quantity,
-      price: product.price,
-      subtotal: product.price * quantity,
-    };
+    const existingProductIndex = billingProducts.findIndex(
+      (p) => p._id === selectedProductId
+    );
 
-    setBillingProducts([...billingProducts, newProduct]);
+    if (existingProductIndex !== -1) {
+      const updatedBillingProducts = [...billingProducts];
+      const existingProduct = updatedBillingProducts[existingProductIndex];
+
+      const newQuantity = existingProduct.quantity + quantity;
+      if (newQuantity > product.quantity) {
+        return toast.warning(
+          `Only ${product.quantity} units available for ${product.product}`
+        );
+      }
+
+      updatedBillingProducts[existingProductIndex] = {
+        ...existingProduct,
+        quantity: newQuantity,
+        subtotal: newQuantity * product.price,
+      };
+
+      setBillingProducts(updatedBillingProducts);
+    } else {
+      const newProduct = {
+        _id: product._id,
+        product: product.product,
+        quantity,
+        price: product.price,
+        subtotal: product.price * quantity,
+      };
+
+      setBillingProducts([...billingProducts, newProduct]);
+    }
+
     setSelectedProductId("");
     setQuantity(1);
     setPaymentType("Cash");
@@ -95,44 +119,43 @@ function Sales() {
   };
 
   const validateDetails = () => {
-       if(!selectedCustomer){
-          toast.error("Please Select a Customer!!");
-          return false
-       }
-       if(billingProducts.length === 0){
-          toast.error("Please add products");
-          return false
-       }
+    if (!selectedCustomer) {
+      toast.error("Please Select a Customer!!");
+      return false;
+    }
+    if (billingProducts.length === 0) {
+      toast.error("Please add products");
+      return false;
+    }
 
-       return true
-  }
+    return true;
+  };
 
-  const calculateTotalBill = async() => {
-    if(!validateDetails()){
-        return 
+  const calculateTotalBill = async () => {
+    if (!validateDetails()) {
+      return;
     }
 
     const total = billingProducts.reduce((sum, item) => sum + item.subtotal, 0);
     setTotalBill(total);
 
     const data = {
-        customersId:selectedCustomer._id,
-        billingProducts,
-        paymentType,
-        totalAmout:total
-    }
+      customersId: selectedCustomer._id,
+      billingProducts,
+      paymentType,
+      totalAmout: total,
+    };
+
     console.log("Selected product: ", billingProducts);
     console.log('This is selected customers: ', selectedCustomer._id);
 
     const response = await billingProductService(data);
-    if(response.success){
+    if (response.success) {
       toast.success("Sale recorded successfully!");
 
       setSelectedCustomer(null);
-      setBillingProducts([])
+      setBillingProducts([]);
     }
-
-    
   };
 
   return (
@@ -151,7 +174,7 @@ function Sales() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          {searchQuery && (
+          {searchQuery && !selectedCustomer && (
             <ul className="absolute w-[50%] bg-white border border-gray-300 rounded-md shadow-md max-h-48 overflow-y-auto z-10">
               {filteredCustomers.length > 0 ? (
                 filteredCustomers.map((customer) => (
@@ -169,6 +192,16 @@ function Sales() {
             </ul>
           )}
         </div>
+
+        {/* Button to clear selected customer */}
+        {selectedCustomer && (
+          <button
+            onClick={handleCustomerClear}
+            className="mt-2 text-red-500 hover:text-red-700"
+          >
+            Change Customer
+          </button>
+        )}
       </div>
 
       <div className="mt-8">
@@ -256,33 +289,15 @@ function Sales() {
                 </tr>
               ))}
             </tbody>
-            <tfoot>
-              <tr className="bg-gray-200 ">
-                <td colSpan="3" className="p-2 text-left font-bold">
-                  Total Amount
-                </td>
-                <td className="p-2 text-center font-bold">
-                  ₹
-                  {billingProducts.reduce(
-                    (sum, item) => sum + item.subtotal,
-                    0
-                  )}
-                </td>
-                <td className="p-2"></td>
-              </tr>
-            </tfoot>
           </table>
         ) : (
-          <p className="mt-4 text-gray-500">No products added to billing yet.</p>
+          <div className="mt-4 text-center text-gray-500">No products added.</div>
         )}
       </div>
 
-      <div className="mt-4 flex items-center justify-end space-x-4">
-        <label className="text-lg font-semibold" htmlFor="paymentType">
-          Payment Type:
-        </label>
+      <div className="mt-4">
+        <h2 className="mb-2 text-lg font-semibold">Select Payment Method:</h2>
         <select
-          id="paymentType"
           className="p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
           value={paymentType}
           onChange={(e) => setPaymentType(e.target.value)}
@@ -291,21 +306,18 @@ function Sales() {
           <option value="Card">Card</option>
           <option value="UPI">UPI</option>
         </select>
-        <button
-          onClick={calculateTotalBill}
-          className="p-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none"
-        >
-          Generate Bill
-        </button>
       </div>
 
-      {/* {totalBill > 0 && (
-        <div className="mt-4 p-4 bg-gray-100 rounded-md shadow-md flex">
-          <h3 className="text-xl font-semibold">Total Bill: ₹{totalBill}</h3>
-        </div>
-      )} */}
+      <div className="mt-4 text-center">
+        <button
+          onClick={calculateTotalBill}
+          className="p-3 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none"
+        >
+          Complete Sale
+        </button>
+      </div>
     </div>
   );
 }
 
-export default Sales
+export default Sales;
