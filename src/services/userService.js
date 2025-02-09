@@ -25,6 +25,7 @@ export const signInService = async(email, password) => {
 
 export const addProductService = async (data) => {
      try {
+       console.log("This is the add product Data: ", data)
         const response = await userAxiosInstance.post('/api/user/add-product',data);
         return response.data
       

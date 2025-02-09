@@ -95,9 +95,12 @@ function Products() {
         
       } else {
         const addProduct = await addProductService(data);
+        console.log("Thsi si add product; ", addProduct);
+        
         if (addProduct.success) {
           toast.success("Added successfully!");
           setAllProducts((prevProducts) => [...prevProducts, addProduct.product]);
+          setfilteredProducts((prevProducts) => [...prevProducts, addProduct.product])
         } else {
           toast.error(addProduct.message || "Failed to add product.");
         }
@@ -162,6 +165,7 @@ function Products() {
         if(response.success){
            const filteredProduct = allProduct.filter((product) => product._id !== productId);
            setAllProducts(filteredProduct)
+           setfilteredProducts(filteredProduct)
            toast.success("Successfully removed")
         }
       } catch (error) {
